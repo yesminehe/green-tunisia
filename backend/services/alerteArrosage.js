@@ -17,12 +17,16 @@ class AlerteArrosageService {
 
     console.log(`Démarrage du service d'alerte d'arrosage (vérification toutes les ${intervalleMinutes} minutes)`);
     
-    // Vérification immédiate
-    this.verifierAlertes();
+    // Vérification immédiate (les erreurs sont journalisées, jamais fatales)
+    this.verifierAlertes().catch(err => {
+      console.error('Échec de la vérification initiale des alertes:', err.message);
+    });
     
     // Vérification périodique
     this.intervalVerification = setInterval(() => {
-      this.verifierAlertes();
+      this.verifierAlertes().catch(err => {
+        console.error('Échec de la vérification périodique des alertes:', err.message);
+      });
     }, intervalleMinutes * 60 * 1000);
   }
 
@@ -51,7 +55,7 @@ class AlerteArrosageService {
         ],
         statut: { $in: ['vivant', 'à surveiller'] }
       })
-        .populate('zone', 'nom region responsable')
+        .populate('zone', 'nom region responsable etat alertes')
         .populate('planteur', 'nom email');
 
       console.log(`${arbresAArroser.length} arbres nécessitent un arrosage`);

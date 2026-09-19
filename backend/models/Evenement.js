@@ -188,10 +188,10 @@ evenementSchema.index({ localisation: '2dsphere' });
 // Index pour la recherche par date
 evenementSchema.index({ date: 1 });
 
-// Middleware pour mettre à jour la date de modification
-evenementSchema.pre('save', function(next) {
+// Middleware pour mettre à jour la date de modification.
+// Pas d'argument `next` : les hooks callback ont été retirés dans Mongoose 9.
+evenementSchema.pre('save', function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 // Méthode pour vérifier si l'événement est complet

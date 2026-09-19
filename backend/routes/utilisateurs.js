@@ -220,6 +220,7 @@ router.post('/adopter-arbre/:arbreId', authMiddleware, async (req, res) => {
       scoreImpact: utilisateur.scoreImpact
     });
   } catch (error) {
+    console.error('Erreur adopter-arbre:', error);
     res.status(400).json({ message: error.message });
   }
 });

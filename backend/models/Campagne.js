@@ -207,10 +207,10 @@ campagneSchema.index({ statut: 1 });
 // Index pour la recherche par date
 campagneSchema.index({ 'objectifs.dateDebut': 1, 'objectifs.dateFin': 1 });
 
-// Middleware pour mettre à jour la date de modification
-campagneSchema.pre('save', function(next) {
+// Middleware pour mettre à jour la date de modification.
+// Pas d'argument `next` : les hooks callback ont été retirés dans Mongoose 9.
+campagneSchema.pre('save', function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 // Méthode pour calculer le pourcentage de réalisation

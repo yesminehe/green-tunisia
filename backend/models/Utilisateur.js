@@ -84,13 +84,21 @@ const utilisateurSchema = new mongoose.Schema({
     ref: 'Badge'
   }],
   
-  // Arbres adoptés/parrainés
+  // Arbres adoptés/parrainés (sous-document : référence + métadonnées)
   arbresAdoptes: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Arbre',
+    arbre: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Arbre',
+      required: true
+    },
     dateAdoption: {
       type: Date,
       default: Date.now
+    },
+    dureeAdoption: {
+      type: Number,
+      min: 1,
+      default: 12
     }
   }],
   
@@ -116,6 +124,12 @@ const utilisateurSchema = new mongoose.Schema({
     type: String,
     enum: ['membre', 'admin', 'benevole'],
     default: 'membre'
+  },
+
+  // Compte actif (désactivation possible par un admin)
+  actif: {
+    type: Boolean,
+    default: true
   },
   
   // Date de création
