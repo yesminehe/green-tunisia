@@ -224,10 +224,10 @@ partenaireSchema.index({ statut: 1 });
 // Index pour la recherche par niveau de partenariat
 partenaireSchema.index({ niveauPartenariat: 1 });
 
-// Middleware pour mettre à jour la date de modification
-partenaireSchema.pre('save', function(next) {
+// Middleware pour mettre à jour la date de modification.
+// Pas d'argument `next` : les hooks callback ont été retirés dans Mongoose 9.
+partenaireSchema.pre('save', function() {
   this.updatedAt = Date.now();
-  next();
 });
 
 // Méthode pour mettre à jour les statistiques

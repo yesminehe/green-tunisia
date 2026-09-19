@@ -1,5 +1,14 @@
 const mongoose = require('mongoose');
 
+// Sous-schéma du centre géométrique d'une zone.
+// Déclaré en sous-schéma explicite : la forme d'objet inline avec un champ
+// nommé `type` provoquait une erreur de casting Mongoose qui cassait la
+// création des zones (conflit "type" vs champ "type").
+const pointGeographiqueSchema = new mongoose.Schema({
+  type: { type: String, enum: ['Point'], required: true, default: 'Point' },
+  coordinates: { type: [Number], required: true, default: [0, 0] },
+}, { _id: false });
+
 const zoneSchema = new mongoose.Schema({
   // Informations de base
   nom: {
@@ -20,18 +29,10 @@ const zoneSchema = new mongoose.Schema({
       required: true
     },
     coordinates: {
-      type: [[[[Number]]]], // Polygon GeoJSON format
+      type: [[[Number]]], // Polygon GeoJSON : [ [ [lon, lat], ... ] ]
       required: true
     },
-    centre: {
-      type: {
-        type: String,
-        enum: ['Point']
-      },
-      coordinates: {
-        type: [Number]
-      }
-    },
+    centre: pointGeographiqueSchema,
     adresse: {
       type: String,
       trim: true
@@ -160,19 +161,31 @@ const zoneSchema = new mongoose.Schema({
 // Index géospatial
 zoneSchema.index({ localisation: '2dsphere' });
 
-// Méthode pour calculer l'état de la zone
-zoneSchema.methods.calculerEtat = function() {
-  const stats = this.statistiques;
-  const totalArbres = stats.nombreArbres;
-  
+// Méthode pour calculer l'état réel de la zone à partir des arbres en base.
+// Uniquement les arbres vivants ou à surveiller sont comptés, en tenant compte
+// de la date de plantation pour les arbres jamais arrosés.
+zoneSchema.methods.calculerEtat = async function() {
+  const Arbre = mongoose.model('Arbre');
+  const totalArbres = await Arbre.countDocuments({ zone: this._id });
   if (totalArbres === 0) {
     this.etat = 'correct';
     return this.etat;
   }
-  
-  // Calculer le pourcentage d'arbres qui n'ont pas été arrosés récemment
-  const tauxArbresNonArroses = 0.1; 
-  
+
+  const dateLimite = new Date();
+  dateLimite.setDate(dateLimite.getDate() - 7);
+
+  const arbresNonArroses = await Arbre.countDocuments({
+    zone: this._id,
+    statut: { $in: ['vivant', 'à surveiller'] },
+    $or: [
+      { dateDernierArrosage: { $lt: dateLimite } },
+      { dateDernierArrosage: null, datePlantation: { $lte: dateLimite } }
+    ]
+  });
+
+  const tauxArbresNonArroses = arbresNonArroses / totalArbres;
+
   if (tauxArbresNonArroses > 0.3) {
     this.etat = 'critique';
   } else if (tauxArbresNonArroses > 0.15) {
@@ -180,7 +193,7 @@ zoneSchema.methods.calculerEtat = function() {
   } else {
     this.etat = 'correct';
   }
-  
+
   return this.etat;
 };
 
@@ -204,18 +217,18 @@ zoneSchema.methods.ajouterAlerte = function(type, description, gravite) {
 };
 
 // Méthode pour résoudre une alerte
-zoneSchema.methods.resoudreAlerte = function(alerteId) {
+zoneSchema.methods.resoudreAlerte = async function(alerteId) {
   const alerte = this.alertes.id(alerteId);
-  if (alerte) {
-    alerte.resolue = true;
-    alerte.dateResolution = new Date();
-    
-    // Recalculer l'état de la zone
-    this.calculerEtat();
-    
-    return this.save();
+  if (!alerte) {
+    throw new Error('Alerte non trouvée');
   }
-  throw new Error('Alerte non trouvée');
+  alerte.resolue = true;
+  alerte.dateResolution = new Date();
+
+  // Recalculer l'état réel de la zone
+  await this.calculerEtat();
+
+  return this.save();
 };
 
 // Méthode pour mettre à jour les statistiques
@@ -235,8 +248,9 @@ zoneSchema.methods.mettreAJourStatistiques = async function() {
   this.statistiques.nombreEspeces = especesUniques.length;
   
   this.derniereMiseAJour = new Date();
-  this.calculerEtat();
-  
+  // Calculer l'état AVANT la sauvegarde pour persister le vrai état.
+  await this.calculerEtat();
+
   return this.save();
 };
 

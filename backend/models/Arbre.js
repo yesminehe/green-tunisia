@@ -198,19 +198,19 @@ const arbreSchema = new mongoose.Schema({
 // Index géospatial pour les recherches par localisation
 arbreSchema.index({ localisation: '2dsphere' });
 
-// Middleware pour mettre à jour la date de modification
-arbreSchema.pre('save', function(next) {
+// Middleware pour mettre à jour la date de modification.
+// Pas d'argument `next` : les hooks callback ont été retirés dans Mongoose 9.
+arbreSchema.pre('save', function() {
   this.updatedAt = Date.now();
   
-  // Générer automatiquement le QR code s'il n'existe pas
+  // Générer automatiquement le QR code s'il n'existe pas.
+  // 6 chiffres aléatoires pour réduire les collisions (index unique en dernier recours).
   if (!this.qrCode) {
     const prefix = 'TN';
     const region = this.localisation.adresse ? this.localisation.adresse.substring(0, 3).toUpperCase() : 'XXX';
-    const random = Math.floor(Math.random() * 90000) + 10000;
+    const random = Math.floor(Math.random() * 900000) + 100000;
     this.qrCode = `${prefix}-${region}-${random}`;
   }
-  
-  next();
 });
 
 // Méthode pour calculer les jours depuis le dernier arrosage
@@ -229,10 +229,20 @@ arbreSchema.methods.frequenceArrosage = function() {
   return Math.round(joursDepuisPlantation / this.nombreArrosages);
 };
 
-// Méthode pour vérifier si l'arbre a besoin d'arrosage
+// Méthode pour vérifier si l'arbre a besoin d'arrosage.
+// Un arbre jamais arrosé n'est considéré en besoin d'arrosage que s'il a été
+// planté depuis au moins `seuilJours` jours (évite les faux positifs sur les jeunes plants).
 arbreSchema.methods.besoinArrosage = function(seuilJours = 7) {
   const jours = this.joursDepuisDernierArrosage();
-  return jours !== null && jours >= seuilJours;
+
+  if (jours !== null) {
+    return jours >= seuilJours;
+  }
+
+  // Jamais arrosé : comparer avec la plantation
+  if (!this.datePlantation) return false;
+  const joursDepuisPlantation = Math.floor((Date.now() - new Date(this.datePlantation)) / (1000 * 60 * 60 * 24));
+  return joursDepuisPlantation >= seuilJours;
 };
 
 const Arbre = mongoose.model('Arbre', arbreSchema);
