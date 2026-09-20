@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { AppError, asyncHandler } = require('./error');
 const Utilisateur = require('../models/Utilisateur');
+const { userHasPermission, getUserPermissions } = require('../config/permissions');
 
 // Vérifie le token JWT et injecte req.utilisateur (payload décodé).
 const authMiddleware = asyncHandler(async (req, _res, next) => {
@@ -25,7 +26,7 @@ const authMiddleware = asyncHandler(async (req, _res, next) => {
   }
 
   // Vérifier que l'utilisateur existe toujours (compte supprimé / rôle modifié).
-  const utilisateur = await Utilisateur.findById(decoded.id).select('_id role actif');
+  const utilisateur = await Utilisateur.findById(decoded.id).select('_id role actif activites');
   if (!utilisateur) {
     throw new AppError(401, 'Utilisateur introuvable');
   }
@@ -36,6 +37,8 @@ const authMiddleware = asyncHandler(async (req, _res, next) => {
   req.utilisateur = {
     id: utilisateur._id.toString(),
     role: utilisateur.role,
+    activites: utilisateur.activites || [],
+    permissions: getUserPermissions(utilisateur),
   };
   next();
 });
@@ -52,4 +55,28 @@ const requireRole = (...roles) =>
     next();
   });
 
-module.exports = { authMiddleware, requireRole };
+// Restreint l'accès aux utilisateurs ayant une permission spécifique
+const requirePermission = (permission) =>
+  asyncHandler(async (req, _res, next) => {
+    if (!req.utilisateur) {
+      throw new AppError(401, 'Authentification requise');
+    }
+    if (!req.utilisateur.permissions || !req.utilisateur.permissions.includes(permission)) {
+      throw new AppError(403, 'Permission insuffisante');
+    }
+    next();
+  });
+
+// Restreint l'accès aux administrateurs
+const requireAdmin = requireRole('admin');
+
+// Restreint l'accès aux membres (inclut les admins)
+const requireMember = requireRole('membre', 'admin');
+
+module.exports = { 
+  authMiddleware, 
+  requireRole, 
+  requirePermission, 
+  requireAdmin, 
+  requireMember 
+};
