@@ -21,9 +21,14 @@ const missionRoutes = require('./routes/missions');
 const app = express();
 
 // --- Sécurité & parsing ------------------------------------------------
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" },
+  contentSecurityPolicy: false, // Disable CSP for development
+}));
 app.use(cors({
   origin: config.corsOrigins === '*' ? true : config.corsOrigins,
+  credentials: true,
 }));
 app.use(express.json({ limit: config.sécurité.jsonLimit }));
 app.use(express.urlencoded({ extended: true, limit: config.sécurité.jsonLimit }));

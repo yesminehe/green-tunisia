@@ -122,9 +122,14 @@ const utilisateurSchema = new mongoose.Schema({
   // Rôle
   role: {
     type: String,
-    enum: ['membre', 'admin', 'benevole'],
     default: 'membre'
   },
+
+  // Activités du membre (pour les membres)
+  activites: [{
+    type: String,
+    enum: ['MONEY_DONOR', 'TREE_DONOR', 'PLANTER', 'WATERER']
+  }],
 
   // Compte actif (désactivation possible par un admin)
   actif: {
@@ -165,6 +170,28 @@ utilisateurSchema.methods.calculerScoreImpact = function() {
 // Méthode pour vérifier si l'utilisateur a un badge spécifique
 utilisateurSchema.methods.aBadge = function(badgeId) {
   return this.badges.some(badge => badge.toString() === badgeId.toString());
+};
+
+// Méthode pour vérifier si l'utilisateur a une activité spécifique
+utilisateurSchema.methods.hasActivite = function(activite) {
+  return this.activites && this.activites.includes(activite);
+};
+
+// Méthode pour ajouter une activité
+utilisateurSchema.methods.addActivite = function(activite) {
+  if (!this.activites) {
+    this.activites = [];
+  }
+  if (!this.activites.includes(activite)) {
+    this.activites.push(activite);
+  }
+};
+
+// Méthode pour supprimer une activité
+utilisateurSchema.methods.removeActivite = function(activite) {
+  if (this.activites) {
+    this.activites = this.activites.filter(a => a !== activite);
+  }
 };
 
 const Utilisateur = mongoose.model('Utilisateur', utilisateurSchema);
