@@ -47,6 +47,13 @@ export default function Navbar() {
           </Link>
 
           <Link
+            href="/volunteers"
+            className="hover:text-[#173a21] transition-colors duration-200 py-1 border-b-2 border-transparent hover:border-[#3d5f46]"
+          >
+            VOLUNTEERS & COMMUNITY
+          </Link>
+
+          <Link
             href="#about"
             className="hover:text-[#173a21] transition-colors duration-200 py-1 border-b-2 border-transparent hover:border-[#3d5f46]"
           >
@@ -119,6 +126,13 @@ export default function Navbar() {
             className="block py-2 hover:text-[#173a21] hover:translate-x-1 transition-all"
           >
             PROJECTS
+          </Link>
+          <Link
+            href="/volunteers"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block py-2 hover:text-[#173a21] hover:translate-x-1 transition-all"
+          >
+            VOLUNTEERS & COMMUNITY
           </Link>
           <Link
             href="#about"
